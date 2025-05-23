@@ -25,8 +25,15 @@ jobs:
 
       - name: build
         run: |
+          git config --global init.defaultBranch main
+          git config --global user.email "mpv-easy@mpv.com"
+          git config --global user.name "mpv-easy-build"
+          git config --global --type bool push.autoSetupRemote true
+
           git clone https://github.com/mpv-easy/mpv-easy.git ../mpv-easy
           cd ../mpv-easy
+          # TODO: change to main
+          git checkout mpv-build
           pnpm i
           pnpm run build
 
