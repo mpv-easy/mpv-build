@@ -1,0 +1,74 @@
+name: update
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: "0 0 * * *"
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "branch"
+        required: false
+        type: string
+        default: main
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -CeEuo pipefail {0}
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: build
+        run: |
+          git config --global init.defaultBranch main
+          git config --global user.email "mpv-easy@mpv.com"
+          git config --global user.name "mpv-easy-build"
+          git config --global --type bool push.autoSetupRemote true
+
+          git clone https://github.com/mpv-easy/mpv-easy.git ../mpv-easy
+          cd ../mpv-easy
+
+          git checkout ${{ github.event.inputs.branch || 'main' }}
+
+          pnpm i
+          pnpm run build
+
+      - name: commit
+        run: |
+          mkdir -p docs
+          cp -rf ../mpv-easy/mpv-build/dist/* ./docs
+
+          ls -l
+
+          rm -rf .git
+          git init
+          git remote add origin https://github.com/mpv-easy/mpv-build.git
+          git add .
+          git commit -am "update by ci"
+
+      - name: ls
+        run: |
+          ls -l
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: main
+          force: true
